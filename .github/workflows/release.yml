@@ -4,16 +4,11 @@ on: workflow_dispatch
 
 jobs:
   publish:
-
     runs-on: ubuntu-latest
 
-    permissions: 
+    permissions:
       contents: read
       packages: write
-
-    defaults:
-      run:
-        working-directory: ./source/android
 
     steps:
     - name: Checkout Source Code
@@ -27,19 +22,30 @@ jobs:
     - name: Install Rust Targets
       run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
-    - name: Set Up Android NDK
-      run: $ANDROID_SDK_ROOT/tools/bin/sdkmanager --install "ndk;25.2.9519653"
+    - name: Set Up Android SDK and NDK
+      uses: reactivecircus/android-sdk-action@v3
+      with:
+        api-levels: 33
+        ndk: 25.2.9519653
+        package-ids: true
 
     - name: Set Up JDK
       uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
+
+    - name: Cache Gradle Dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.gradle/caches
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
 
     - name: Build With Gradle
       run: ./gradlew build
-      
+
     - name: Publish Packages
       run: ./gradlew :android-local-vpn:publish
       env:
